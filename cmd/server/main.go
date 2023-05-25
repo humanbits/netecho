@@ -1,11 +1,12 @@
 package main
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"github.com/kelseyhightower/envconfig"
+	log "github.com/sirupsen/logrus"
 	"io"
-	"log"
 	"net"
 )
 
@@ -38,16 +39,16 @@ func main() {
 	for {
 		con, err := lis.Accept()
 		if err != nil {
-			log.Printf("could not accept connection: %s", err.Error())
+			log.Errorf("could not accept connection: %s", err.Error())
 			continue
 		}
 		log.Printf("accepted new connection")
 
-		n, err := io.Copy(con, con)
+		n, err := io.Copy(base64.NewEncoder(base64.StdEncoding, io.Discard), con)
 		if err != nil {
-			log.Printf("error echoing input: %s", err.Error())
+			log.Errorf("error echoing input: %s", err.Error())
 			continue
 		}
-		log.Printf("successfully echoed %d bytes back", n)
+		log.Printf("successfully read %d bytes", n)
 	}
 }
