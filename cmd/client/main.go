@@ -18,7 +18,7 @@ type config struct {
 	MessageSizeBytes int64         `default:"10000000"`
 	SleepDuration    time.Duration `default:"1s"`
 	Timeout          time.Duration `default:"100ms"`
-	LogLevel         log.Level     `default:"info"`
+	LogLevel         string        `default:"info"`
 }
 
 func main() {
@@ -26,6 +26,9 @@ func main() {
 	if err := envconfig.Process("", &c); err != nil {
 		log.Fatalf("config error: %s", err.Error())
 	}
+
+	level, _ := log.ParseLevel(c.LogLevel)
+	log.SetLevel(level)
 
 	for {
 		conn, err := net.DialTimeout(
