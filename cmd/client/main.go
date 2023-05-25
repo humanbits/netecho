@@ -35,7 +35,7 @@ func main() {
 		)
 
 		if err != nil {
-			log.Printf("unable to establish connection: %s", err.Error())
+			log.Errorf("unable to establish connection: %s", err.Error())
 		} else {
 			if err := conn.SetDeadline(time.Now().Add(c.Timeout)); err != nil {
 				log.Fatalf("error setting connection timeout: %v:", err)
