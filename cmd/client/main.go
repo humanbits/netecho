@@ -56,15 +56,19 @@ func main() {
 
 			start := time.Now()
 			i := 0
+			var errors []error
 			for ; start.Add(c.ConnDuration).After(time.Now()); i++ {
 				log.Infof("sending message %d...", i)
 				_, err = io.Copy(conn, bytes.NewReader(originalMessage))
 				if err != nil {
+					errors = append(errors, err)
 					log.Errorf("error sending bytes: %s", err.Error())
 				}
 				time.Sleep(c.SleepDuration)
 			}
-			log.Printf("successfully sent %d messages, closing the connection...", i)
+
+			log.Printf("successfully sent %d of %d messages, closing the connection...", len(errors), i)
+
 			if err := conn.Close(); err != nil {
 				log.Errorf("error closing the connection: %s", err.Error())
 			} else {
