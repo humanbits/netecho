@@ -40,7 +40,7 @@ func main() {
 		if err != nil {
 			log.Errorf("unable to establish connection: %s", err.Error())
 		} else {
-			if err := conn.SetDeadline(time.Now().Add(c.ConnDuration + 100*time.Millisecond)); err != nil {
+			if err := conn.SetDeadline(time.Now().Add(c.ConnDuration * 2)); err != nil {
 				log.Fatalf("error setting connection timeout: %v:", err)
 			}
 			originalMessage, err := io.ReadAll(io.LimitReader(rand.Reader, c.MessageSizeBytes))
