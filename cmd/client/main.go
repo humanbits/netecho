@@ -6,9 +6,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"net"
+	"net/http"
 	"time"
 )
 
@@ -21,6 +25,21 @@ type config struct {
 	LogLevel         string        `default:"info"`
 }
 
+var (
+	connectionAttempts = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "netecho_connection_attempts",
+	})
+	connectionFailures = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "netecho_connection_failures",
+	})
+	messageAttempts = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "netecho_message_attempts",
+	})
+	messageFailures = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "netecho_message_failures",
+	})
+)
+
 func main() {
 	var c config
 	if err := envconfig.Process("", &c); err != nil {
@@ -31,7 +50,17 @@ func main() {
 	log.Printf("log level is %s", level.String())
 	log.SetLevel(level)
 
+	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+
+		if err := http.ListenAndServe(":80", mux); err != nil {
+			log.Panic("could not start http server to server metrics")
+		}
+	}()
+
 	for {
+		connectionAttempts.Inc()
 		conn, err := net.DialTimeout(
 			"tcp",
 			fmt.Sprintf("%s:%d", c.TargetHostname, c.TargetPort),
@@ -40,6 +69,7 @@ func main() {
 
 		if err != nil {
 			log.Errorf("unable to establish connection: %s", err.Error())
+			connectionFailures.Inc()
 		} else {
 			if err := conn.SetDeadline(time.Now().Add(c.ConnDuration * 2)); err != nil {
 				log.Fatalf("error setting connection timeout: %v:", err)
@@ -52,7 +82,7 @@ func main() {
 				c.ConnDuration/c.SleepDuration,
 			)
 			if err != nil {
-				log.Error(err.Error())
+				log.Fatalf("cannot generate random bytes: %v", err)
 			}
 
 			start := time.Now()
@@ -60,10 +90,12 @@ func main() {
 			var errors []error
 			for ; start.Add(c.ConnDuration).After(time.Now()); i++ {
 				log.Infof("sending message %d...", i)
+				messageAttempts.Inc()
 				_, err = io.Copy(conn, bytes.NewReader(originalMessage))
 				if err != nil {
 					errors = append(errors, err)
 					log.Errorf("error sending bytes: %s", err.Error())
+					messageFailures.Inc()
 				}
 				time.Sleep(c.SleepDuration)
 			}
