@@ -28,6 +28,7 @@ func main() {
 	}
 
 	level, _ := log.ParseLevel(c.LogLevel)
+	log.Printf("log level is %s", level.String())
 	log.SetLevel(level)
 
 	for {
