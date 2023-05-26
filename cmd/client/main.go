@@ -16,8 +16,8 @@ type config struct {
 	TargetHostname   string        `default:"localhost"`
 	TargetPort       int           `default:"8080"`
 	MessageSizeBytes int64         `default:"10000000"`
-	SleepDuration    time.Duration `default:"1s"`
-	Timeout          time.Duration `default:"100ms"`
+	ConnDuration     time.Duration `default:"100ms"`
+	SleepDuration    time.Duration `default:"10ms"`
 	LogLevel         string        `default:"info"`
 }
 
@@ -34,39 +34,42 @@ func main() {
 		conn, err := net.DialTimeout(
 			"tcp",
 			fmt.Sprintf("%s:%d", c.TargetHostname, c.TargetPort),
-			c.Timeout,
+			c.ConnDuration,
 		)
 
 		if err != nil {
 			log.Errorf("unable to establish connection: %s", err.Error())
 		} else {
-			if err := conn.SetDeadline(time.Now().Add(c.Timeout)); err != nil {
+			if err := conn.SetDeadline(time.Now().Add(c.ConnDuration + 100*time.Millisecond)); err != nil {
 				log.Fatalf("error setting connection timeout: %v:", err)
 			}
 			originalMessage, err := io.ReadAll(io.LimitReader(rand.Reader, c.MessageSizeBytes))
 			log.Printf(
-				"successfully established connection, sending %d random bytes (%s)...",
+				"successfully established new connection, it will be sending %d random bytes (%s...) up to %d times over it",
 				c.MessageSizeBytes,
 				base64.StdEncoding.EncodeToString(originalMessage[:10]),
+				c.ConnDuration/c.SleepDuration,
 			)
 			if err != nil {
 				log.Error(err.Error())
 			}
 
-			_, err = io.Copy(conn, bytes.NewReader(originalMessage))
-			if err != nil {
-				log.Errorf("error sending bytes: %s", err.Error())
-			} else {
-				log.Printf("OK, closing...")
+			start := time.Now()
+			i := 0
+			for ; start.Add(c.ConnDuration).After(time.Now()); i++ {
+				log.Infof("sending message %d...", i)
+				_, err = io.Copy(conn, bytes.NewReader(originalMessage))
+				if err != nil {
+					log.Errorf("error sending bytes: %s", err.Error())
+				}
+				time.Sleep(c.SleepDuration)
 			}
+			log.Printf("successfully sent %d messages, closing the connection...", i)
 			if err := conn.Close(); err != nil {
 				log.Errorf("error closing the connection: %s", err.Error())
 			} else {
-				log.Info("OK")
+				log.Info("successfully closed connection")
 			}
 		}
-		log.Printf("sleeping %v...", c.SleepDuration)
-		time.Sleep(c.SleepDuration)
 	}
-
 }
