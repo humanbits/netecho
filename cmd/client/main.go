@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"github.com/humanbits/netecho/cmd/client/sender"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/prometheus/client_golang/prometheus"
@@ -60,7 +61,11 @@ func main() {
 	for {
 		connectionAttempts.Inc()
 
-		snd, err := sender.NewTCPSender(c.TargetHostname, c.TargetPort, c.ConnDuration)
+		snd, err := sender.NewTCPSender(
+			c.TargetHostname,
+			fmt.Sprint(c.TargetPort),
+			c.ConnDuration,
+		)
 
 		if err != nil {
 			log.Errorf("unable to establish connection: %s", err.Error())

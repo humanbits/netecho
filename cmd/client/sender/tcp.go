@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-func NewTCPSender(host string, port int, duration time.Duration) (Interface, error) {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), duration)
+func NewTCPSender(host, port string, duration time.Duration) (Interface, error) {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), duration)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to establish a TCP connection")
 	}
