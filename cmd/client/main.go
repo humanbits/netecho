@@ -22,6 +22,7 @@ type config struct {
 	ConnDuration     time.Duration `default:"100ms"`
 	SleepDuration    time.Duration `default:"10ms"`
 	LogLevel         string        `default:"info"`
+	Transport        string        `default:"tcp"` // allowed values: tcp, http
 }
 
 var (
@@ -58,10 +59,21 @@ func main() {
 		}
 	}()
 
+	senderFunc, ok := senderFuncs[c.Transport]
+	if !ok {
+		log.Fatalf("unknown sender type: %q", c.Transport)
+	}
+
+	log.Infof(
+		"starting sending messages using %s, connection duration is %v",
+		c.TargetHostname,
+		c.ConnDuration,
+	)
+
 	for {
 		connectionAttempts.Inc()
 
-		snd, err := sender.NewTCPSender(
+		snd, err := senderFunc(
 			c.TargetHostname,
 			fmt.Sprint(c.TargetPort),
 			c.ConnDuration,
@@ -106,4 +118,9 @@ func main() {
 			}
 		}
 	}
+}
+
+var senderFuncs = map[string]func(host, port string, duration time.Duration) (sender.Interface, error){
+	"tcp":  sender.NewTCPSender,
+	"http": sender.NewHTTPSender,
 }
