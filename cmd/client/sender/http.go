@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"io"
 	"net/http"
 	"time"
 )
@@ -34,6 +36,12 @@ func (h *httpSender) Send(msg []byte) error {
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "error sending request")
+	}
+	n, err := io.Copy(io.Discard, res.Body)
+	if err != nil {
+		return errors.Wrap(err, "unable to read the body back")
+	} else {
+		log.Infof("read %d bytes back", n)
 	}
 	if err := res.Body.Close(); err != nil {
 		return errors.Wrap(err, "unable to close the body")

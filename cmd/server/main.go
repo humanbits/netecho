@@ -72,12 +72,12 @@ func runTCPServer(port int) {
 func runHTTPServer(port int) {
 	log.Printf("starting HTTP server on port %d...", port)
 	handler := http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		n, err := io.Copy(io.Discard, request.Body)
+		n, err := io.Copy(w, request.Body)
 		if err != nil {
 			log.Errorf("unable to read request body: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		} else {
-			log.Infof("read %d bytes", n)
+			log.Infof("echoed %d bytes back", n)
 		}
 	})
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), handler)
